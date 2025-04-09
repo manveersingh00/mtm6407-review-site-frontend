@@ -1,60 +1,67 @@
-<!-- src/components/HomePage.vue -->
 <template>
   <div class="container">
     <h1>Movie Reviews</h1>
+
+    <!-- Search Bar -->
+    <input
+      type="text"
+      v-model="searchQuery"
+      placeholder="Search reviews..."
+      @input="filterReviews"
+      class="search-bar"
+    />
+
     <div v-if="loading">Loading reviews...</div>
     <div v-else class="reviews">
-      <div v-for="review in reviews" :key="review.id" class="review-card">
-        <img
-          :src="getImageUrl(review)"
-          alt="movie image"
-        />
+      <div v-for="review in filteredReviews" :key="review?.slug?.current" class="review-card">
+        <img :src="review?.posterUrl || '/default-movie.jpg'" alt="movie image" />
         <h2>{{ review?.title }}</h2>
-        <p>{{ review?.content?.[0]?.children?.[0]?.text?.substring(0, 150) }}...</p>
-        <p><strong>Rating:</strong> {{ review?.rating }}/10</p>
-        <router-link :to="`/review/${review?.slug}`">Read more</router-link>
+        <p>{{ review?.content?.substring(0, 150) }}...</p>
+        <p><strong>Rating:</strong> {{ review.rating }}/10</p>
+        <router-link :to="`/review/${review?.slug?.current}`">Read more</router-link>
       </div>
     </div>
   </div>
 </template>
 
-<script>
-import axios from 'axios'
+<script setup>
+import { ref, onMounted } from 'vue'
+import { client } from '@/sanityClient'
 
-export default {
-  name: 'HomePage',
-  data() {
-    return {
-      reviews: [],
-      loading: true,
-    }
-  },
-  methods: {
-    async fetchReviews() {
-      try {
-        const res = await axios.get(
-          'https://review-cms.onrender.com/api/reviews?populate=*'
-        )
-        this.reviews = res.data.data
-        this.loading = false
-      } catch (err) {
-        console.error('Error fetching reviews:', err)
-      }
-    },
-    getImageUrl(review) {
-        if (review?.image?.formats?.thumbnail?.url) {
-    return review.image.formats.thumbnail.url.startsWith('http')
-      ? review.image.formats.thumbnail.url
-      : `https://review-cms.onrender.com${review.image.formats.thumbnail.url}`;
-  } else {
-    return '/default-movie.jpg'; 
+const reviews = ref([])
+const filteredReviews = ref([])
+const searchQuery = ref('')
+const loading = ref(true)
+
+const fetchReviews = async () => {
+  try {
+    const data = await client.fetch(`*[_type == "review"] | order(publishedAt desc){
+      title,
+      slug,
+      director,
+      publishedAt,
+      rating,
+      content,
+      "posterUrl": poster.asset->url
+    }`)
+    reviews.value = data
+    filteredReviews.value = data
+    loading.value = false
+  } catch (err) {
+    console.error('Error fetching reviews from Sanity:', err)
   }
-    },
-  },
-  mounted() {
-    this.fetchReviews()
-  },
 }
+
+const filterReviews = () => {
+  const query = searchQuery.value.toLowerCase()
+  filteredReviews.value = reviews.value.filter((review) =>
+    review.title.toLowerCase().includes(query)
+  )
+}
+
+onMounted(() => {
+  fetchReviews()
+})
 </script>
 
 <style scoped>
@@ -62,6 +69,12 @@ export default {
   max-width: 900px;
   margin: auto;
   padding: 20px;
+}
+.search-bar {
+  padding: 8px;
+  margin-bottom: 20px;
+  width: 100%;
+  font-size: 16px;
 }
 .reviews {
   display: grid;
