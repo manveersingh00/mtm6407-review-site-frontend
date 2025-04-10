@@ -28,7 +28,7 @@
 </template>
 
 <script>
-import { client } from '@/sanityClient';
+import { client } from '../sanityClient';
 
 export default {
   name: 'ReviewDetails',
