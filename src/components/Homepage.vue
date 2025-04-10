@@ -57,7 +57,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { client } from '@/sanityClient'
+import { client } from '../sanityClient'
 
 const reviews = ref([])
 const filteredReviews = ref([])
